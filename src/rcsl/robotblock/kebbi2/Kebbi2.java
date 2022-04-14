@@ -155,17 +155,20 @@ public class Kebbi2 extends AndroidNonvisibleComponent implements IRobotEventCal
   int list_index = 0;
   float current_move = 0f;
   float current_turn = 0f;
-  Runnable moveRunnable= () -> {
-    current_move = movelist.get(list_index);
-    current_turn = turnlist.get(list_index);
+  Runnable moveRunnable=new Runnable() {
+    @Override
+    public void run() {
+      current_move = movelist.get(list_index);
+      current_turn = turnlist.get(list_index);
 
-    if(current_move == 0){
-        mRobot.turn(current_turn);
-    }else{
-        mRobot.move(current_move);
+      if(current_move == 0){
+          mRobot.turn(current_turn);
+      }else{
+          mRobot.move(current_move);
+      }
+      
+      mWorkerHandler.postDelayed(stopMoveRunnable, moveTimeList.get(list_index));
     }
-    
-    mWorkerHandler.postDelayed(stopMoveRunnable, moveTimeList.get(list_index));
   };
 
   @SimpleProperty(description = "String: Speech rate is on a scale of 1-9")
