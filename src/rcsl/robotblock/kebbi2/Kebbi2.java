@@ -28,6 +28,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.List;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.text.ParseException;
+import android.widget.Toast;
+
 public class Kebbi2 extends AndroidNonvisibleComponent implements IRobotEventCallback, IVoiceEventCallback, OnStopListener {
 
   private Context context;
@@ -63,26 +68,35 @@ public class Kebbi2 extends AndroidNonvisibleComponent implements IRobotEventCal
 
   public Kebbi2(ComponentContainer container) {
     super(container.$form());
+   
     context = container.$form();
 
-    form.registerForOnStop(this);
+    // if(GetLocalDate()){
+      // Toast.makeText(context, "hi there", Toast.LENGTH_SHORT).show();
+      form.registerForOnStop(this);
 
-    InitialKebbi();
+      InitialKebbi();
 
-    cmdTTS = new ArrayList<String>();
-    cmdMotion = new ArrayList<String>();
-    mHandler = new Handler();  //create a Handler based on Main Thread(UI Thread)
-    newSingleThreadPool = Executors.newSingleThreadExecutor();
+      cmdTTS = new ArrayList<String>();
+      cmdMotion = new ArrayList<String>();
+      mHandler = new Handler();  //create a Handler based on Main Thread(UI Thread)
+      newSingleThreadPool = Executors.newSingleThreadExecutor();
 
-    bindBackgroundService = new BindBackgroundService(context);
-    bindBackgroundService.BindBGService();
+      // map.put("English (United States)", "en_US");
+		  // map.put("Chinese (Traditional Han,Taiwan)", "zh_TW");
 
-     // movement initial
-    movelist = new ArrayList<Float>();
-    turnlist = new ArrayList<Float>();
-    moveTimeList = new ArrayList<Integer>();
+      // bindBackgroundService = new BindBackgroundService(context);
+      // bindBackgroundService.BindBGService();
 
-    initMovementHandler();
+      // movement initial
+      movelist = new ArrayList<Float>();
+      turnlist = new ArrayList<Float>();
+      moveTimeList = new ArrayList<Integer>();
+
+      initMovementHandler();
+    // }else{
+      // Toast.makeText(context, "the extension has expired.", Toast.LENGTH_LONG).show();
+    // }
   }
 
   @SimpleFunction(description = "Start Kebbi service")
@@ -275,14 +289,14 @@ public class Kebbi2 extends AndroidNonvisibleComponent implements IRobotEventCal
     // this.positionInDegree = positionInDegree;
     // this.speedInDegreePerSec = speedInDegreePerSec;
     // DoTTSandAction(sentence, "custom_motion");
+    Log.d("motor control", "motor control");
 
-    AsynchUtil.runAsynchronously(new Runnable() {
-      public void run() {
-        mRobot.ctlMotor(motorID, positionInDegree, speedInDegreePerSec);
-        mRobot.startTTS(sentence);
-        VoiceEvent.tts_sentence = sentence;
-      }
-    });
+    mRobot.ctlMotor(motorID, positionInDegree, speedInDegreePerSec);
+
+    if(sentence != ""){
+      mRobot.startTTS(sentence);
+      VoiceEvent.tts_sentence = sentence;
+    }
   }
 
   @SimpleFunction(description = "Kebbi motion reset")
@@ -292,21 +306,15 @@ public class Kebbi2 extends AndroidNonvisibleComponent implements IRobotEventCal
 
   @SimpleFunction(description = "Kebbi STT")
   public void StartSTT() {
-    try {
-        Thread.sleep(100);
-    } catch (InterruptedException e) {
-        e.printStackTrace();
-    }
-    // AsynchUtil.runAsynchronously(new Runnable() {
-    //   public void run() {
-        mRobot.startSpeech2Text(false);
-    //   }
-    // });
+    Log.d("STT", "STT");
+    mRobot.startSpeech2Text(false);
   }
 
   @SimpleFunction(description = "Kebbi speaks out a sentence by a giving string.")
   public void Say(String sentence) {
-    DoTTSandAction(sentence, "");
+    if(sentence != ""){
+      DoTTSandAction(sentence, "");
+    }
   }
 
   @SimpleFunction(description = "Kebbi stops TTS.")
@@ -332,8 +340,9 @@ public class Kebbi2 extends AndroidNonvisibleComponent implements IRobotEventCal
         cmdMotion.add(motion);
 
         if(doTTSnMotion) {
-          mHandler.post(robotTTSandAction);
+          // mHandler.post(robotTTSandAction);
           // newSingleThreadPool.execute(robotTTSandAction);
+          AsynchUtil.runAsynchronously(robotTTSandAction);
           doTTSnMotion = false;
         }
     //  }
@@ -345,7 +354,7 @@ public class Kebbi2 extends AndroidNonvisibleComponent implements IRobotEventCal
       try {
         String current_tts = cmdTTS.get(TnMCmdStep);
         String current_motion = cmdMotion.get(TnMCmdStep);
-        
+
         if(!current_tts.equals("")) mTts_complete = false;
         if(!current_motion.equals("")) mMotion_complete = false;
 
@@ -363,16 +372,16 @@ public class Kebbi2 extends AndroidNonvisibleComponent implements IRobotEventCal
             //wait both action complete
             Log.d("wait","wait both action complete");
         }
-        
         TnMCmdStep++;
         if(TnMCmdStep < cmdMotion.size()) {
             //both TTS and Motion complete, we play next action
             // mHandler.post(robotTTSandAction);//play next action
             newSingleThreadPool.execute(robotTTSandAction);
-            
         }else{
             TnMCmdStep = 0;
             doTTSnMotion = true;
+            mTts_complete = true;
+            mMotion_complete = true;
             cmdMotion.clear();
             cmdTTS.clear();
             // mRobot.motionReset();//Reset Robot pose to default
@@ -402,7 +411,7 @@ public class Kebbi2 extends AndroidNonvisibleComponent implements IRobotEventCal
 
   @Override
   public void onStartOfMotionPlay(String s) {
-    bindBackgroundService.DisableTrack();
+    // bindBackgroundService.DisableTrack();
   }
 
   @Override
@@ -416,7 +425,7 @@ public class Kebbi2 extends AndroidNonvisibleComponent implements IRobotEventCal
       }
     });    
 
-    bindBackgroundService.EnableTrack();
+    // bindBackgroundService.EnableTrack();
   }
 
   @Override
@@ -594,5 +603,20 @@ public class Kebbi2 extends AndroidNonvisibleComponent implements IRobotEventCal
   @SimpleProperty(description = "Turning control of Kebbi")
   public String Turn() {
     return "turn";
+  }
+
+  private boolean GetLocalDate(){
+    SimpleDateFormat sdformat = new SimpleDateFormat("yyyy-MM-dd"); 
+    try {
+      
+      Date date = new Date();  
+      
+      Date date1 = sdformat.parse("2022-05-18");
+      // Date date2 = sdformat.parse("2019-09-16");
+
+      return date1.after(sdformat.parse(sdformat.format(date)));
+    } catch (ParseException ex) {
+      return false;
+    }
   }
 }
